@@ -48,6 +48,7 @@ The result showed that the password was last changed on:
 ```text
 2021-11-03
 ```
+![Linux shadow file and Cyber Skyline challenge](johntheripper.png)
 
 This allowed me to answer the password-aging portion of the challenge using information directly from the shadow entry.
 
