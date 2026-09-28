@@ -29,7 +29,7 @@ This project focused on analyzing a Linux `/etc/shadow` file to identify the onl
 
 I reviewed the provided Linux `/etc/shadow` file. Most system accounts contained locked password fields, represented by values such as `*` or `!`. The account **hollie** was the only user that contained an actual password hash, so I identified it as the account that needed further analysis.
 
-![Linux shadow file and Cyber Skyline challenge](Johnscr2.png)
+![Linux shadow file and Cyber Skyline challenge](Johnscr.png)
 
 *Ref 1: Reviewing the Linux shadow-file data to identify the only user account containing an actual password hash.*
 
@@ -87,7 +87,7 @@ john --wordlist=/usr/share/wordlists/rockyou.txt hollie.hash
 
 The attack worked, but progress was very slow because the target used yescrypt. Unlike the MD5 hashes from the easier password-cracking challenge, yescrypt is intentionally more computationally expensive to test.
 
-![John the Ripper testing Hollie's hash](Johnscr.png)
+![John the Ripper testing Hollie's hash](Johnscr2.png)
 
 *Ref 2: John the Ripper running a RockYou wordlist attack against the extracted yescrypt hash stored in `hollie.hash`.*
 
