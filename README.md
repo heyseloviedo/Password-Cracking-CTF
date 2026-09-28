@@ -12,8 +12,8 @@ This project focused on analyzing a Linux `/etc/shadow` file to identify the onl
 - Recognized a yescrypt password hash and separated its salt from its hash digest.
 - Extracted a target credential into a separate file for password testing.
 - Used John the Ripper with the RockYou wordlist to perform a dictionary attack.
-- Learned why yescrypt is significantly slower to test than simpler password hashes.
-- Used information about the target account to understand why a targeted cracking method can outperform a broad wordlist attack.
+- Observed how yescrypt's computational cost affected password-testing speed.
+- Adjusted the password-recovery approach when the initial wordlist attempt did not quickly recover the password.
 
 ### Tools Used
 
@@ -79,13 +79,13 @@ This gave John the Ripper a single target hash to process.
 
 ### Step 5: Test the Hash With John the Ripper
 
-I first used John the Ripper with the RockYou wordlist:
+I used John the Ripper with the RockYou wordlist to test candidate passwords against the extracted hash:
 
 ```bash
 john --wordlist=/usr/share/wordlists/rockyou.txt hollie.hash
 ```
 
-The attack worked, but progress was very slow because the target used yescrypt. Unlike the MD5 hashes from the easier password-cracking challenge, yescrypt is intentionally more computationally expensive to test.
+John successfully loaded the hash, but the wordlist attack progressed slowly. The target used yescrypt, a password-hashing method designed to make password guessing computationally expensive, so testing a large wordlist required significantly more time.
 
 ![John the Ripper testing Hollie's hash](Johnscr2.png)
 
@@ -93,10 +93,10 @@ The attack worked, but progress was very slow because the target used yescrypt. 
 
 ### Step 6: Recover the Password
 
-A more targeted approach was effective because the password was closely related to the username. The plaintext password was successfully recovered as:
+Because the broad wordlist attempt was progressing slowly, a more targeted cracking approach was used. John the Ripper's Single mode generates password candidates from information associated with the account, making it useful when the password may be related to the username. This approach successfully recovered the plaintext password:
 
 ```text
 hollie03
 ```
 
-This challenge showed that password recovery is not only about testing as many passwords as possible. Understanding the account and selecting an appropriate cracking method can make the process more effective, especially when working with a deliberately slow password-hashing algorithm such as yescrypt.
+The recovered password completed the credential-analysis process: the target account was identified from the shadow file, its yescrypt credential was examined and isolated, and the plaintext password was recovered with John the Ripper.
