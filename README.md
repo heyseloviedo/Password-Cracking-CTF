@@ -1,104 +1,61 @@
-# Password Cracking CTF
+# Linux Credential Analysis & Password Recovery
 
 ## Objective
 
-The objective of this project was to practice password-cracking techniques through Cyber Skyline challenges. The project included recovering MD5 passwords with Hashcat and analyzing a Linux `/etc/shadow` entry that used yescrypt.
+This project focused on analyzing a Linux `/etc/shadow` file to identify the only user account with a stored password hash and recover the user's plaintext password. I examined the structure of the shadow entry, interpreted the password-aging value, identified the yescrypt hash components, isolated the credential into its own file, and used John the Ripper to test password-recovery methods. The challenge demonstrated how information stored in Linux credential files can be analyzed during a password-recovery investigation.
 
 ### Skills Learned
 
-- Identified likely hash formats from their structure.
-- Used Kali Linux command-line tools to inspect password data.
-- Used Hashcat with the RockYou wordlist against MD5 hashes.
-- Analyzed the fields in a Linux `/etc/shadow` file.
-- Interpreted Linux password-aging values.
-- Identified the salt and digest portions of a yescrypt password hash.
-- Used John the Ripper with a wordlist to test a yescrypt hash.
-- Compared a broad wordlist attack with a more targeted cracking approach.
+- Analyzed a Linux `/etc/shadow` file and identified an account containing an actual password hash.
+- Interpreted colon-separated shadow-file fields and password-aging information.
+- Converted the password's last-change value from days since the Unix epoch into a calendar date.
+- Recognized a yescrypt password hash and separated its salt from its hash digest.
+- Extracted a target credential into a separate file for password testing.
+- Used John the Ripper with the RockYou wordlist to perform a dictionary attack.
+- Learned why yescrypt is significantly slower to test than simpler password hashes.
+- Used information about the target account to understand why a targeted cracking method can outperform a broad wordlist attack.
 
 ### Tools Used
 
-- Kali Linux
-- Hashcat
-- John the Ripper
-- RockYou wordlist
-- Linux commands including `cat`, `date`, `ls`, and `gzip`
+- **Kali Linux** — used as the Linux environment for reviewing the credential data and running password-recovery commands.
+- **John the Ripper** — used to test candidate passwords against the extracted yescrypt password hash.
+- **RockYou wordlist** — used as the candidate password list during the initial dictionary attack.
+- **`cat`** — used while reviewing and working with the extracted credential data.
+- **`date`** — used to convert the shadow file's password-aging value into a readable date.
 
-## Easy Challenge - Rockyou
+## Steps
 
-### Step 1: Review the Provided Hashes
+### Step 1: Analyze the `/etc/shadow` File
 
-I reviewed the provided password ciphertexts. Each value contained 32 hexadecimal characters, which is commonly associated with MD5 hashes. I saved the hashes in `hashes.txt` and verified the file with:
+I reviewed the provided Linux `/etc/shadow` file. Most system accounts contained locked password fields, represented by values such as `*` or `!`. The account **hollie** was the only user that contained an actual password hash, so I identified it as the account that needed further analysis.
 
-```bash
-cat hashes.txt
-```
+![Linux shadow file and Cyber Skyline challenge](Johnscr2.png)
 
-### Step 2: Prepare the RockYou Wordlist
+*Ref 1: Reviewing the Linux shadow-file data to identify the only user account containing an actual password hash.*
 
-Because the challenge mentioned the RockYou breach, I checked Kali Linux for the RockYou wordlist and decompressed it:
+### Step 2: Interpret the Password-Aging Value
 
-```bash
-ls /usr/share/wordlists/
-sudo gzip -d /usr/share/wordlists/rockyou.txt.gz
-```
+The shadow entry for Hollie contained the value `18934` in the field that records when the password was last changed. This value represents the number of days since January 1, 1970.
 
-### Step 3: Run Hashcat
-
-I tested the hashes against the RockYou wordlist:
-
-```bash
-hashcat -m 0 -a 0 hashes.txt /usr/share/wordlists/rockyou.txt
-```
-
-Here, `-m 0` selects MD5 and `-a 0` selects a straight dictionary attack.
-
-### Step 4: Review the Results
-
-Hashcat successfully recovered all five hashes:
-
-```text
-Status...........: Cracked
-Hash.Mode........: 0 (MD5)
-Recovered........: 5/5 (100.00%) Digests
-```
-
----
-
-## Hard Challenge 2 - Kali Linux
-
-**Platform:** Cyber Skyline  
-**Name:** Kali Linux  
-**Points:** 70
-
-### Objective
-
-Analyze a Linux `/etc/shadow` file and answer questions about the only user account with a password.
-
-### Background
-
-Linux `/etc/shadow` files store password hashes and password-aging information. The fields are separated by colons.
-
-### Step 1: Identify the User With a Password Hash
-
-I reviewed the `/etc/shadow` file and found that **hollie** was the only user with an actual password hash.
-
-*Ref 1: The Cyber Skyline challenge and Linux shadow-file data were reviewed to identify the account containing a password hash.*
-
-### Step 2: Determine the Password Change Date
-
-I used the value `18934` from Hollie's shadow entry and converted the number of days since the Unix epoch into a date:
+I converted it with:
 
 ```bash
 date -d '1970-01-01 + 18934 days'
 ```
 
-This showed that the password was last changed on **2021-11-03**.
+The result showed that the password was last changed on:
 
-*Ref 2: The password-aging value from the shadow entry was converted into a calendar date.*
+```text
+2021-11-03
+```
 
-### Step 3: Break Down the yescrypt Hash
+This allowed me to answer the password-aging portion of the challenge using information directly from the shadow entry.
 
-I identified the yescrypt components of Hollie's password entry.
+### Step 3: Analyze the yescrypt Password Hash
+
+I then broke down Hollie's password field. The `$y$` identifier showed that the password was stored using **yescrypt**.
+
+From the shadow entry, I identified the following components:
 
 ```text
 Salt:
@@ -108,34 +65,38 @@ Hash digest:
 KZlio78LilItobsx/17ecFf1e2SbsduhP1sZEWuHrL4
 ```
 
-*Ref 3: The yescrypt password entry was separated to identify its salt and hash digest.*
+Separating these components helped me understand the structure of the stored Linux credential before attempting password recovery.
 
-### Step 4: Crack the Password With John the Ripper
+### Step 4: Extract the Target Hash
 
-I saved Hollie's password hash into a separate file named `hollie.hash`. I then used John the Ripper to test the hash against the RockYou wordlist:
+Instead of working with the entire shadow file, I saved Hollie's password hash into a separate file named:
+
+```text
+hollie.hash
+```
+
+This gave John the Ripper a single target hash to process.
+
+### Step 5: Test the Hash With John the Ripper
+
+I first used John the Ripper with the RockYou wordlist:
 
 ```bash
 john --wordlist=/usr/share/wordlists/rockyou.txt hollie.hash
 ```
 
-The RockYou attack was very slow because the password used yescrypt. A more targeted Single Crack Mode approach was more effective because the password was closely related to the username.
+The attack worked, but progress was very slow because the target used yescrypt. Unlike the MD5 hashes from the easier password-cracking challenge, yescrypt is intentionally more computationally expensive to test.
 
-The plaintext password was successfully recovered as:
+![John the Ripper testing Hollie's hash](Johnscr.png)
+
+*Ref 2: John the Ripper running a RockYou wordlist attack against the extracted yescrypt hash stored in `hollie.hash`.*
+
+### Step 6: Recover the Password
+
+A more targeted approach was effective because the password was closely related to the username. The plaintext password was successfully recovered as:
 
 ```text
 hollie03
 ```
 
-*Ref 4: John the Ripper was used against the extracted yescrypt hash, leading to recovery of the plaintext password.*
-
-### Tools Used
-
-- Kali Linux
-- John the Ripper
-- RockYou wordlist
-- `cat`
-- `date`
-
-## Result
-
-The project demonstrated two different password-cracking situations: a dictionary attack against MD5 hashes and analysis of a Linux `/etc/shadow` yescrypt hash. The hard challenge also showed why selecting a cracking strategy based on available context can be more effective than relying only on a large wordlist.
+This challenge showed that password recovery is not only about testing as many passwords as possible. Understanding the account and selecting an appropriate cracking method can make the process more effective, especially when working with a deliberately slow password-hashing algorithm such as yescrypt.
