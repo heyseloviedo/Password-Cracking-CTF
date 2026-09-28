@@ -2,100 +2,59 @@
 
 ## Objective
 
-The objective of this project was to recover plaintext passwords from provided password hashes using Kali Linux, Hashcat, and the RockYou wordlist. The challenge required identifying the likely hash format, preparing the provided hashes, and performing a dictionary attack to match the hashes against known passwords from the RockYou breach.
+The objective of this project was to practice password-cracking techniques through Cyber Skyline challenges. The project included recovering MD5 passwords with Hashcat and analyzing a Linux `/etc/shadow` entry that used yescrypt.
 
 ### Skills Learned
 
-- Identified password hashes based on their format and length.
-- Used Kali Linux command-line tools to prepare files for password cracking.
-- Worked with compressed wordlists and extracted `rockyou.txt`.
-- Used Hashcat to perform a dictionary attack against MD5 hashes.
-- Interpreted Hashcat output to confirm successful password recovery.
-- Improved understanding of password hashing, wordlist attacks, and basic password-cracking workflows.
+- Identified likely hash formats from their structure.
+- Used Kali Linux command-line tools to inspect password data.
+- Used Hashcat with the RockYou wordlist against MD5 hashes.
+- Analyzed the fields in a Linux `/etc/shadow` file.
+- Interpreted Linux password-aging values.
+- Identified the salt and digest portions of a yescrypt password hash.
+- Used John the Ripper with a wordlist to test a yescrypt hash.
+- Compared a broad wordlist attack with a more targeted cracking approach.
 
 ### Tools Used
 
-- Kali Linux for the password-cracking environment.
-- Hashcat for testing candidate passwords against the provided hashes.
-- RockYou wordlist as the source of candidate plaintext passwords.
-- Nano for creating the hash input file.
-- Linux terminal commands such as `ls`, `cat`, and `gzip`.
+- Kali Linux
+- Hashcat
+- John the Ripper
+- RockYou wordlist
+- Linux commands including `cat`, `date`, `ls`, and `gzip`
 
-## Steps
+## Easy Challenge - Rockyou
 
 ### Step 1: Review the Provided Hashes
 
-I first reviewed the provided password ciphertexts. Each value contained 32 hexadecimal characters, which is a format commonly associated with MD5 hashes. Based on that pattern, I used MD5 as my initial hash-type hypothesis.
-
-I saved the hashes into a text file named `hashes.txt`, with one hash per line.
-
-```bash
-nano hashes.txt
-```
-
-After saving the file, I verified the contents with:
+I reviewed the provided password ciphertexts. Each value contained 32 hexadecimal characters, which is commonly associated with MD5 hashes. I saved the hashes in `hashes.txt` and verified the file with:
 
 ```bash
 cat hashes.txt
 ```
 
-*Ref 1: The provided hashes were stored in `hashes.txt` so Hashcat could process them as a group.*
-
----
-
 ### Step 2: Prepare the RockYou Wordlist
 
-The challenge description mentioned that the recovered plaintext passwords appeared to overlap with passwords from the RockYou breach. Because of that clue, I checked Kali Linux for the RockYou wordlist.
+Because the challenge mentioned the RockYou breach, I checked Kali Linux for the RockYou wordlist and decompressed it:
 
 ```bash
 ls /usr/share/wordlists/
-```
-
-The wordlist was available as:
-
-```text
-rockyou.txt.gz
-```
-
-The `.gz` extension meant that the file was compressed, so I decompressed it with:
-
-```bash
 sudo gzip -d /usr/share/wordlists/rockyou.txt.gz
 ```
 
-After decompression, the file was available as:
-
-```text
-/usr/share/wordlists/rockyou.txt
-```
-
-*Ref 2: RockYou was located in Kali Linux and decompressed so Hashcat could use the plaintext password list.*
-
----
-
 ### Step 3: Run Hashcat
 
-I used Hashcat to test the hashes against passwords contained in the RockYou wordlist.
+I tested the hashes against the RockYou wordlist:
 
 ```bash
 hashcat -m 0 -a 0 hashes.txt /usr/share/wordlists/rockyou.txt
 ```
 
-In this command:
-
-- `hashcat` starts the password-cracking tool.
-- `-m 0` tells Hashcat to treat the hashes as MD5.
-- `-a 0` selects a straight dictionary attack.
-- `hashes.txt` contains the target hashes.
-- `/usr/share/wordlists/rockyou.txt` provides the candidate passwords.
-
-*Ref 3: Hashcat was configured to test MD5 hashes using passwords from the RockYou wordlist.*
-
----
+Here, `-m 0` selects MD5 and `-a 0` selects a straight dictionary attack.
 
 ### Step 4: Review the Results
 
-Hashcat successfully recovered all of the hashes in the challenge. The final output showed:
+Hashcat successfully recovered all five hashes:
 
 ```text
 Status...........: Cracked
@@ -103,21 +62,80 @@ Hash.Mode........: 0 (MD5)
 Recovered........: 5/5 (100.00%) Digests
 ```
 
-The recovered plaintext passwords appeared next to their matching hashes in the terminal output.
-
-*Ref 4: Hashcat completed the dictionary attack successfully and recovered all 5 passwords.*
-
 ---
+
+## Hard Challenge 2 - Kali Linux
+
+**Platform:** Cyber Skyline  
+**Name:** Kali Linux  
+**Points:** 70
+
+### Objective
+
+Analyze a Linux `/etc/shadow` file and answer questions about the only user account with a password.
+
+### Background
+
+Linux `/etc/shadow` files store password hashes and password-aging information. The fields are separated by colons.
+
+### Step 1: Identify the User With a Password Hash
+
+I reviewed the `/etc/shadow` file and found that **hollie** was the only user with an actual password hash.
+
+*Ref 1: The Cyber Skyline challenge and Linux shadow-file data were reviewed to identify the account containing a password hash.*
+
+### Step 2: Determine the Password Change Date
+
+I used the value `18934` from Hollie's shadow entry and converted the number of days since the Unix epoch into a date:
+
+```bash
+date -d '1970-01-01 + 18934 days'
+```
+
+This showed that the password was last changed on **2021-11-03**.
+
+*Ref 2: The password-aging value from the shadow entry was converted into a calendar date.*
+
+### Step 3: Break Down the yescrypt Hash
+
+I identified the yescrypt components of Hollie's password entry.
+
+```text
+Salt:
+/WzixhAsn8sdXhCquYzh01
+
+Hash digest:
+KZlio78LilItobsx/17ecFf1e2SbsduhP1sZEWuHrL4
+```
+
+*Ref 3: The yescrypt password entry was separated to identify its salt and hash digest.*
+
+### Step 4: Crack the Password With John the Ripper
+
+I saved Hollie's password hash into a separate file named `hollie.hash`. I then used John the Ripper to test the hash against the RockYou wordlist:
+
+```bash
+john --wordlist=/usr/share/wordlists/rockyou.txt hollie.hash
+```
+
+The RockYou attack was very slow because the password used yescrypt. A more targeted Single Crack Mode approach was more effective because the password was closely related to the username.
+
+The plaintext password was successfully recovered as:
+
+```text
+hollie03
+```
+
+*Ref 4: John the Ripper was used against the extracted yescrypt hash, leading to recovery of the plaintext password.*
+
+### Tools Used
+
+- Kali Linux
+- John the Ripper
+- RockYou wordlist
+- `cat`
+- `date`
 
 ## Result
 
-The challenge was completed successfully by identifying the hashes as compatible with MD5 mode in Hashcat and using the RockYou wordlist to recover all five plaintext passwords.
-
-## Screenshots
-
-Screenshots from the Kali Linux terminal can be added here to document each stage of the process:
-
-- Creating and verifying `hashes.txt`
-- Locating and decompressing `rockyou.txt.gz`
-- Running Hashcat
-- Final `Recovered: 5/5` results
+The project demonstrated two different password-cracking situations: a dictionary attack against MD5 hashes and analysis of a Linux `/etc/shadow` yescrypt hash. The hard challenge also showed why selecting a cracking strategy based on available context can be more effective than relying only on a large wordlist.
